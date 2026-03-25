@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg:         #0d0f12;
+  --surface:    #13161b;
+  --surface-2:  #1a1e25;
+  --border:     #242830;
+  --border-2:   #2e333d;
+  --text:       #e2e6ee;
+  --text-2:     #8b92a3;
+  --text-3:     #525969;
+  --accent:     #3b7eff;
+  --accent-dim: rgba(59,126,255,.12);
+  --green:      #34c47c;
+  --green-dim:  rgba(52,196,124,.12);
+  --amber:      #f59e0b;
+  --amber-dim:  rgba(245,158,11,.1);
+  --red:        #f04f5f;
+  --red-dim:    rgba(240,79,95,.1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
+
+code, pre, .mono { font-family: 'IBM Plex Mono', monospace; }
