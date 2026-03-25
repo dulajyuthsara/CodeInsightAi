@@ -1,2 +1,4 @@
-# CodeInsightAi
-Building  a web app where users paste code and get: Code quality feedback Bug detection Suggestions for improvement Security warnings
+# CodeInsight AI
+
+A full-stack AI-powered code reviewer. Paste or upload source code and receive structured feedback including bug detection, security vulnerability warnings, performance improvements, and an overall quality score — powered by OpenAI GPT.
+
