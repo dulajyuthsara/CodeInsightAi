@@ -25,6 +25,9 @@ export const createReview = async (req, res) => {
 
     res.status(201).json(review);
   } catch (err) {
+    if (err.response?.status === 429) {
+      return res.status(429).json({ error: "Gemini is busy (Rate Limit). Please wait 10 seconds before trying again." });
+    }
     console.error("Review error:", err.message);
     res.status(500).json({ error: "Analysis failed. Please try again." });
   }

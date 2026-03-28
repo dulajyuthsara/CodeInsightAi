@@ -24,7 +24,6 @@ export default function ReviewView({ prefill, onClear }) {
   const numRef = useRef(null);
   const timerRef = useRef(null);
 
-  // Load prefilled review from history
   useEffect(() => {
     if (prefill) {
       setCode(prefill.codeSnippet || "");
@@ -33,10 +32,11 @@ export default function ReviewView({ prefill, onClear }) {
       updateLines(prefill.codeSnippet || "");
       onClear?.();
     }
-  }, [prefill]);
+  }, [prefill, onClear]);
 
   const updateLines = (val) => {
-    setLineCount(val.split("\n").length);
+    const lines = val.split("\n").length;
+    setLineCount(lines === 0 ? 1 : lines);
   };
 
   const handleCodeChange = (e) => {
@@ -70,7 +70,7 @@ export default function ReviewView({ prefill, onClear }) {
 
     let i = 0;
     timerRef.current = setInterval(() => {
-      setLoadMsg(LOADING_MSGS[i++ % LOADING_MSGS.length]);
+      setLoadMsg(LOADING_MSGS[++i % LOADING_MSGS.length]);
     }, 900);
 
     try {
@@ -94,172 +94,110 @@ export default function ReviewView({ prefill, onClear }) {
   const filename = `untitled.${EXT_MAP[lang] || lang}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+    <div className="main">
       {/* Topbar */}
-      <div style={s.topbar}>
-        <span style={s.topbarTitle}>Code Review</span>
-        <span style={s.topbarSep}>/</span>
-        <span style={s.topbarFile}>{filename}</span>
-        <div style={s.topbarActions}>
-          <button style={s.btnGhost} onClick={clearAll}>
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <div className="topbar">
+        <span className="topbar-title">Code Review</span>
+        <span className="topbar-sep">/</span>
+        <span className="topbar-sub">{filename}</span>
+        <div className="topbar-actions">
+          <button className="btn btn-ghost" onClick={clearAll}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
               <path d="M3 3l10 10M13 3L3 13"/>
             </svg>
             Clear
           </button>
-          <button style={{ ...s.btnPrimary, opacity: loading || !code.trim() ? 0.45 : 1 }}
-            onClick={analyze} disabled={loading || !code.trim()}>
-            {loading ? (
-              <>
-                <span style={s.spinner} />
-                {loadMsg}
-              </>
-            ) : (
-              <>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <polygon points="4,2 14,8 4,14"/>
-                </svg>
-                Analyze
-              </>
-            )}
+          <button className="btn btn-ghost" disabled={!result}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M4 2h8a1 1 0 011 1v11l-4-2-4 2V3a1 1 0 011-1z"/>
+            </svg>
+            Save
+          </button>
+          <button 
+            className="btn btn-primary" 
+            onClick={analyze} 
+            disabled={loading || !code.trim()}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <polygon points="4,2 14,8 4,14"/>
+            </svg>
+            Analyze
           </button>
         </div>
       </div>
 
-      {/* Two-panel body */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      {/* Content Area */}
+      <div className="content" style={{ position: "relative" }}>
+        
+        {/* Loading overlay */}
+        <div className={`loading-overlay ${loading ? "active" : ""}`}>
+          <div className="spinner"></div>
+          <span className="loading-text">{loadMsg}</span>
+        </div>
 
-        {/* Editor */}
-        <div style={s.editorPanel}>
-          <div style={s.panelHeader}>
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--text-3)" strokeWidth="1.6">
+        {/* Editor Panel */}
+        <div className="editor-panel">
+          <div className="panel-header">
+            <svg style={{ width: "13px", height: "13px", color: "var(--text-3)" }} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
               <rect x="2" y="2" width="12" height="12" rx="1"/>
-              <line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="9" y2="8"/>
+              <line x1="5" y1="5" x2="11" y2="5"/>
+              <line x1="5" y1="8" x2="9" y2="8"/>
               <line x1="5" y1="11" x2="11" y2="11"/>
             </svg>
-            <span style={s.panelTitle}>Source Code</span>
-            <select value={lang} onChange={(e) => setLang(e.target.value)} style={s.langSelect}>
+            <span className="panel-title">Source Code</span>
+            <select 
+              className="lang-select" 
+              value={lang} 
+              onChange={(e) => setLang(e.target.value)}
+              style={{ marginLeft: "auto" }}
+            >
               {LANGUAGES.map((l) => (
                 <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>
               ))}
             </select>
           </div>
 
-          <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
-            {/* Line numbers */}
-            <div ref={numRef} style={s.lineNums}>
+          <div className="editor-wrap">
+            <div className="line-nums" ref={numRef}>
               {Array.from({ length: lineCount }, (_, i) => (
-                <span key={i} style={s.lineNum}>{i + 1}</span>
+                <span className="line-num" key={i}>{i + 1}</span>
               ))}
             </div>
-            {/* Textarea */}
             <textarea
+              id="codeInput"
               ref={taRef}
+              spellCheck="false"
+              placeholder="Paste your source code here…"
               value={code}
               onChange={handleCodeChange}
               onScroll={syncScroll}
-              spellCheck={false}
-              placeholder="Paste your source code here…"
-              style={s.textarea}
-            />
+            ></textarea>
           </div>
 
-          <div style={s.editorFooter}>
-            <span style={s.charCount}>{code.length.toLocaleString()} chars · {lineCount} lines</span>
-            <label style={s.uploadLabel}>
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <div className="editor-footer">
+            <span className="char-count">{code.length.toLocaleString()} chars · {lineCount} lines</span>
+            <label className="upload-label" htmlFor="fileInput">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
                 <path d="M8 10V4M5 7l3-3 3 3"/><path d="M3 13h10"/>
               </svg>
               Upload file
-              <input type="file" accept=".js,.ts,.py,.java,.cpp,.go,.rs,.txt" onChange={handleFileUpload} style={{ display: "none" }} />
             </label>
+            <input 
+              type="file" 
+              id="fileInput" 
+              accept=".js,.ts,.py,.java,.cpp,.go,.rs,.txt" 
+              onChange={handleFileUpload} 
+              style={{ display: "none" }} 
+            />
           </div>
         </div>
 
-        {/* Results */}
-        <ResultsPanel result={result} error={error} loading={loading} loadMsg={loadMsg} />
+        {/* Results Panel */}
+        <div className="results-panel">
+          <ResultsPanel result={result} error={error} />
+        </div>
+
       </div>
     </div>
   );
-}
-
-const s = {
-  topbar: {
-    height: "49px", borderBottom: "1px solid var(--border)",
-    display: "flex", alignItems: "center", padding: "0 20px", gap: "10px",
-    flexShrink: 0, background: "var(--surface)",
-  },
-  topbarTitle: { fontSize: "13px", fontWeight: 500, color: "var(--text)" },
-  topbarSep:   { color: "var(--text-3)", fontSize: "13px" },
-  topbarFile:  { fontSize: "12px", color: "var(--text-3)", fontFamily: "'IBM Plex Mono', monospace" },
-  topbarActions: { marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" },
-  btnGhost: {
-    display: "inline-flex", alignItems: "center", gap: "5px",
-    padding: "6px 12px", borderRadius: "6px", fontSize: "12px", fontWeight: 500,
-    fontFamily: "'IBM Plex Sans', sans-serif", cursor: "pointer",
-    background: "transparent", color: "var(--text-2)",
-    border: "1px solid var(--border)",
-  },
-  btnPrimary: {
-    display: "inline-flex", alignItems: "center", gap: "6px",
-    padding: "6px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: 500,
-    fontFamily: "'IBM Plex Sans', sans-serif", cursor: "pointer",
-    background: "var(--accent)", color: "#fff", border: "none",
-  },
-  spinner: {
-    display: "inline-block", width: "11px", height: "11px",
-    border: "1.5px solid rgba(255,255,255,.3)", borderTopColor: "#fff",
-    borderRadius: "50%", animation: "spin .7s linear infinite",
-  },
-  editorPanel: {
-    width: "52%", borderRight: "1px solid var(--border)",
-    display: "flex", flexDirection: "column", overflow: "hidden",
-  },
-  panelHeader: {
-    padding: "10px 16px", borderBottom: "1px solid var(--border)",
-    display: "flex", alignItems: "center", gap: "8px", flexShrink: 0,
-    background: "var(--surface)",
-  },
-  panelTitle: { fontSize: "12px", fontWeight: 500, color: "var(--text-2)" },
-  langSelect: {
-    background: "var(--surface-2)", border: "1px solid var(--border)",
-    color: "var(--text)", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace",
-    padding: "3px 8px", borderRadius: "4px", cursor: "pointer", outline: "none",
-    marginLeft: "auto",
-  },
-  lineNums: {
-    width: "44px", background: "var(--surface)", borderRight: "1px solid var(--border)",
-    padding: "16px 0", overflowY: "hidden", flexShrink: 0,
-    display: "flex", flexDirection: "column",
-  },
-  lineNum: {
-    display: "block", textAlign: "right", paddingRight: "10px",
-    fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px",
-    color: "var(--text-3)", lineHeight: "20px", userSelect: "none",
-  },
-  textarea: {
-    flex: 1, background: "var(--bg)", color: "var(--text)",
-    fontFamily: "'IBM Plex Mono', monospace", fontSize: "12.5px",
-    lineHeight: "20px", padding: "16px", overflowY: "auto", tabSize: 2,
-  },
-  editorFooter: {
-    padding: "8px 16px", borderTop: "1px solid var(--border)",
-    display: "flex", alignItems: "center", gap: "12px", flexShrink: 0,
-    background: "var(--surface)",
-  },
-  charCount: { fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", color: "var(--text-3)" },
-  uploadLabel: {
-    display: "inline-flex", alignItems: "center", gap: "5px",
-    fontSize: "11px", color: "var(--text-3)", cursor: "pointer",
-    padding: "3px 8px", borderRadius: "4px",
-    border: "1px dashed var(--border-2)",
-  },
-};
-
-// Inject spin keyframe once
-if (typeof document !== "undefined" && !document.getElementById("spin-kf")) {
-  const style = document.createElement("style");
-  style.id = "spin-kf";
-  style.textContent = "@keyframes spin { to { transform: rotate(360deg); } }";
-  document.head.appendChild(style);
 }

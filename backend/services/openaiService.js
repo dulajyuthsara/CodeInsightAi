@@ -1,7 +1,5 @@
 import axios from "axios";
 
-const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-
 /**
  * Sanitize user code to prevent prompt injection attacks.
  * Strips sequences that could break out of the code block in the prompt.
@@ -13,7 +11,7 @@ function sanitizeCode(code) {
 }
 
 /**
- * Send code to OpenAI and return a structured review object.
+ * Send code to Google Gemini API (Free Tier) and return a structured review object.
  */
 export const analyzeCode = async (code, language) => {
   const safeCode = sanitizeCode(code);
@@ -43,31 +41,49 @@ Rules:
 - Do not include markdown backticks around the JSON.`;
 
   const userPrompt = `Language: ${language}\n\nCode:\n${safeCode}`;
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
-  const response = await axios.post(
-    OPENAI_URL,
-    {
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user",   content: userPrompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 2000,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === "dummy_key") {
+    throw new Error("Missing GEMINI_API_KEY in .env");
+  }
+
+  let attempts = 0;
+  const maxAttempts = 2;
+
+  while (attempts < maxAttempts) {
+    try {
+      const response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 2000,
+            responseMimeType: "application/json"
+          }
+        },
+        {
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+
+      const raw = response.data.candidates[0].content.parts[0].text.trim();
+      const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "");
+      return JSON.parse(cleaned);
+    } catch (error) {
+      attempts++;
+      if (error.response?.status === 429 && attempts < maxAttempts) {
+        console.warn(`Gemini Rate Limit (429). Retrying attempt ${attempts}...`);
+        await new Promise(r => setTimeout(r, 2000)); // Wait 2 seconds before retry
+        continue;
+      }
+      if (error.response?.status === 429) {
+        console.error("Gemini API Rate Limit hit after retries. Quota exceeded.");
+      } else {
+        console.error("Gemini API Error:", error.response?.data || error.message);
+      }
+      throw error;
     }
-  );
-
-  const raw = response.data.choices[0].message.content.trim();
-
-  // Strip accidental markdown fences if the model adds them
-  const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "");
-
-  const parsed = JSON.parse(cleaned);
-  return parsed;
+  }
 };
